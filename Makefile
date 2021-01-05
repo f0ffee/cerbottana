@@ -61,7 +61,15 @@ pylint: deps
 
 .PHONY: pytest
 pytest: deps
-	if test -z "$$CI"; then poetry run pytest; else poetry run pytest --cov --cov-report=xml; fi
+ifdef CI
+	poetry run pytest --cov --cov-report=xml --ignore=tests/handlers --ignore=tests/models --ignore=tests/plugins --ignore=tests/tasks
+	poetry run pytest --cov --cov-report=xml:coverage-handlers.xml tests/handlers
+	poetry run pytest --cov --cov-report=xml:coverage-models.xml tests/models
+	poetry run pytest --cov --cov-report=xml:coverage-plugins.xml tests/plugins
+	poetry run pytest --cov --cov-report=xml:coverage-tasks.xml tests/tasks
+else
+	poetry run pytest
+endif
 	@echo ''
 
 

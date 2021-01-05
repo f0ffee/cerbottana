@@ -3,6 +3,7 @@ __pycache__/
 /.env
 /.mypy_cache
 /.venv
+/coverage*.xml
 /database.sqlite
 /poetry.toml
 /veekun.sqlite

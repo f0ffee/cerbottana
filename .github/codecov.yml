@@ -9,3 +9,20 @@ coverage:
     project:
       default:
         informational: true
+
+flags:
+  general:
+    paths:
+      - (?!(?:handlers|models|plugins|tasks)\/)
+  handlers:
+    paths:
+      - handlers/
+  models:
+    paths:
+      - models/
+  plugins:
+    paths:
+      - plugins/
+  tasks:
+    paths:
+      - tasks/

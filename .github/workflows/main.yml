@@ -40,7 +40,33 @@ jobs:
       run: make pylint
     - name: Test with pytest
       run: make pytest
-    - name: Upload coverage to Codecov
+    - name: Upload coverage to Codecov (general)
       uses: codecov/codecov-action@1fc7722ded4708880a5aea49f2bfafb9336f0c8d
       with:
+        files: ./coverage.xml
+        flags: general
+        fail_ci_if_error: true
+    - name: Upload coverage to Codecov (handlers)
+      uses: codecov/codecov-action@1fc7722ded4708880a5aea49f2bfafb9336f0c8d
+      with:
+        files: ./coverage-handlers.xml
+        flags: handlers
+        fail_ci_if_error: true
+    - name: Upload coverage to Codecov (models)
+      uses: codecov/codecov-action@1fc7722ded4708880a5aea49f2bfafb9336f0c8d
+      with:
+        files: ./coverage-models.xml
+        flags: models
+        fail_ci_if_error: true
+    - name: Upload coverage to Codecov (plugins)
+      uses: codecov/codecov-action@1fc7722ded4708880a5aea49f2bfafb9336f0c8d
+      with:
+        files: ./coverage-plugins.xml
+        flags: plugins
+        fail_ci_if_error: true
+    - name: Upload coverage to Codecov (tasks)
+      uses: codecov/codecov-action@1fc7722ded4708880a5aea49f2bfafb9336f0c8d
+      with:
+        files: ./coverage-tasks.xml
+        flags: tasks
         fail_ci_if_error: true
