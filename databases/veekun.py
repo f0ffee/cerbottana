@@ -552,3 +552,32 @@ class AbilityNames(Base):
 
     ability = relationship("Abilities", uselist=False)
     local_language = relationship("Languages", uselist=False)
+
+
+class Natures(Base):
+    __tablename__ = "natures"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    identifier = Column(String, nullable=False)
+    decreased_stat_id = Column(Integer, nullable=False)
+    increased_stat_id = Column(Integer, nullable=False)
+    hates_flavor_id = Column(Integer, nullable=False)
+    likes_flavor_id = Column(Integer, nullable=False)
+    game_index = Column(Integer, nullable=False)
+
+    nature_names = relationship("NatureNames", uselist=True)
+
+
+class NatureNames(Base):
+    __tablename__ = "nature_names"
+
+    nature_id = Column(
+        Integer, ForeignKey("natures.id"), primary_key=True, nullable=False
+    )
+    local_language_id = Column(
+        Integer, ForeignKey("languages.id"), primary_key=True, nullable=False
+    )
+    name = Column(String, nullable=False)
+
+    nature = relationship("Natures", uselist=False)
+    local_language = relationship("Languages", uselist=False)
