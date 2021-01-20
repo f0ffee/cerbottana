@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import func
 
 import databases.veekun as v
+import utils
 from database import Database
 from tasks import init_task_wrapper
 
@@ -81,11 +82,19 @@ async def csv_to_sqlite(conn: Connection) -> None:
                     csv_keys = csv_data.fieldnames
 
                     if csv_keys is not None:
-                        session.bulk_insert_mappings(
-                            tables_classes[tname], [dict(i) for i in csv_data]
-                        )
+                        data = [dict(i) for i in csv_data]
+                        keys = list(csv_keys)
 
-                        if "identifier" in csv_keys:
+                        if hasattr(table.columns, "name_normalized"):
+                            keys.append("name_normalized")
+                            for row in data:
+                                row["name_normalized"] = utils.to_user_id(
+                                    utils.remove_accents(row["name"])
+                                )
+
+                        session.bulk_insert_mappings(tables_classes[tname], data)
+
+                        if "identifier" in keys:
                             session.query(tables_classes[tname]).update(
                                 {
                                     tables_classes[tname].identifier: func.replace(

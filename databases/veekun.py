@@ -177,6 +177,8 @@ class ItemNames(Base):
     )
     name = Column(String, nullable=False)
 
+    name_normalized = Column(String)
+
     item = relationship("Items", uselist=False)
     local_language = relationship("Languages", uselist=False)
 
@@ -407,6 +409,8 @@ class MoveNames(Base):
     )
     name = Column(String, nullable=False)
 
+    name_normalized = Column(String)
+
     move = relationship("Moves", uselist=False)
     local_language = relationship("Languages", uselist=False)
 
@@ -550,6 +554,8 @@ class AbilityNames(Base):
     )
     name = Column(String, nullable=False)
 
+    name_normalized = Column(String)
+
     ability = relationship("Abilities", uselist=False)
     local_language = relationship("Languages", uselist=False)
 
@@ -578,6 +584,8 @@ class NatureNames(Base):
         Integer, ForeignKey("languages.id"), primary_key=True, nullable=False
     )
     name = Column(String, nullable=False)
+
+    name_normalized = Column(String)
 
     nature = relationship("Natures", uselist=False)
     local_language = relationship("Languages", uselist=False)
