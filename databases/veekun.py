@@ -524,3 +524,31 @@ class VersionNames(Base):
 
     version = relationship("Versions", uselist=False)
     local_language = relationship("Languages", uselist=False)
+
+
+class Abilities(Base):
+    __tablename__ = "abilities"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    identifier = Column(String, nullable=False)
+    generation_id = Column(Integer, ForeignKey("generations.id"), nullable=False)
+    is_main_series = Column(Integer, nullable=False)
+
+    generation = relationship("Generations", uselist=False)
+
+    ability_names = relationship("AbilityNames", uselist=True)
+
+
+class AbilityNames(Base):
+    __tablename__ = "ability_names"
+
+    ability_id = Column(
+        Integer, ForeignKey("abilities.id"), primary_key=True, nullable=False
+    )
+    local_language_id = Column(
+        Integer, ForeignKey("languages.id"), primary_key=True, nullable=False
+    )
+    name = Column(String, nullable=False)
+
+    ability = relationship("Abilities", uselist=False)
+    local_language = relationship("Languages", uselist=False)
