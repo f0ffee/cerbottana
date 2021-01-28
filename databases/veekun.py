@@ -255,6 +255,8 @@ class Locations(Base):
     region_id = Column(Integer, ForeignKey("regions.id"), nullable=False)
     identifier = Column(String, nullable=False)
 
+    route_number = Column(Integer)
+
     region = relationship("Regions", uselist=False, viewonly=True)
 
     location_names = relationship("LocationNames", uselist=True, viewonly=True)
