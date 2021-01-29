@@ -1,34 +1,35 @@
-{% for version_id in versions %}
+{% for version_id, version in results.items() %}
   <details>
     <summary>
-      <b><big>{{ results[version_id]["name"] }}</big></b>
+      <b><big>{{ version["name"] }}</big></b>
     </summary>
     <table>
       <tbody>
-        {% for area in results[version_id]["areas"] %}
+        {% for area in version["areas"].values() %}
           <tr>
-            <th>{{ results[version_id]["areas"][area]["name"] }}</th>
+            <th>{{ area["name"] }}</th>
             <th>Method</th>
             <th>Level</th>
             <th colspan="2">Rarity</th>
           </tr>
-          {% for slot in results[version_id]["areas"][area]["slots"] %}
+          {% for slot in area["slots"].values() %}
             <tr>
-              <td>{{ results[version_id]["areas"][area]["slots"][slot]["pokemon"] }}</td>
-              <td>{{ results[version_id]["areas"][area]["slots"][slot]["method"] }}</td>
+              <td>{{ slot["pokemon"] }}</td>
+              <td>{{ slot["method"] }}</td>
               <td>
-                L{{ results[version_id]["areas"][area]["slots"][slot]["min_level"] }}
-                {%- if results[version_id]["areas"][area]["slots"][slot]["min_level"] < results[version_id]["areas"][area]["slots"][slot]["max_level"] -%}
-                  -{{ results[version_id]["areas"][area]["slots"][slot]["max_level"] }}
+                L{{ slot["min_level"] }}
+                {%- if slot["min_level"] < slot["max_level"] -%}
+                  -{{ slot["max_level"] }}
                 {% endif %}
               </td>
-              <td{% if not results[version_id]["areas"][area]["slots"][slot]["conditions"] %} colspan="2"{% endif %}>
-                {{ results[version_id]["areas"][area]["slots"][slot]["rarity"] }}%
+              <td{% if not slot["conditions"] %} colspan="2"{% endif %}>
+                {{ slot["rarity"] }}%
               </td>
-              {% if results[version_id]["areas"][area]["slots"][slot]["conditions"] %}
+              {% if slot["conditions"] %}
                 <td>
-                  {% for i in results[version_id]["areas"][area]["slots"][slot]["conditions"].values() %}
-                    +{{ i["rarity"] }}% {{ i["description"] }}<br>
+                  {% for condition in slot["conditions"] %}
+                    {{ all_conditions[condition] }}
+                    {%- if not loop.last %}, {% endif %}
                   {% endfor %}
                 </td>
               {% endif %}
