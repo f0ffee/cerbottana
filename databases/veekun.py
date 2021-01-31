@@ -531,6 +531,17 @@ class PokemonSpecies(TranslatableMixin, Base):
 
     _translation_data = {"table": "pokemon_species_names"}
 
+    def all_forms(self, language_id: int) -> dict[int, str]:
+        forms = {}
+        for pokemon in self.pokemon:
+            for form in pokemon.pokemon_forms:
+                if not form.is_default:
+                    continue
+                forms[pokemon.id] = form.get_translation(
+                    language_id
+                ) or self.get_translation(language_id)
+        return forms
+
 
 class PokemonSpeciesFlavorText(Base):
     __tablename__ = "pokemon_species_flavor_text"

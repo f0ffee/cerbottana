@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
-from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
 import databases.veekun as v
 import utils
@@ -21,27 +21,17 @@ async def learnset(msg: Message) -> None:
     pokemon_id = utils.to_user_id(utils.remove_diacritics(msg.args[0].lower()))
     version = utils.to_user_id(utils.remove_diacritics(msg.args[1].lower()))
 
+    language_id = 9  # TEMP
+
     db = Database.open("veekun")
 
     with db.get_session() as session:
-        version_group_id: int | None = (
-            session.query(v.VersionGroups.id)  # type: ignore  # sqlalchemy
-            .filter_by(identifier=version)
-            .scalar()
-        )
-
-        if version_group_id is None:
-            version_group_id = (
-                session.query(v.Versions.version_group_id)  # type: ignore  # sqlalchemy
-                .filter_by(identifier=version)
-                .scalar()
-            )
-            if version_group_id is None:
-                return
 
         class MovesDict(TypedDict):
             name: str
-            level: int | None
+            level: int
+            order: int
+            machine_id: int | None
             machine: str | None
             forms: set[int]
 
@@ -50,96 +40,88 @@ async def learnset(msg: Message) -> None:
             moves: dict[str, MovesDict]
             form_column: bool
 
-        results: dict[int, ResultsDict] = {}
-
-        all_forms = {
-            i[0]: i[1]
-            for i in (
-                session.query(
-                    v.Pokemon.id,
-                    func.ifnull(
-                        v.PokemonFormNames.pokemon_name, v.PokemonSpeciesNames.name
-                    ),
-                )
-                .select_from(v.PokemonSpecies)  # type: ignore  # sqlalchemy
-                .join(v.PokemonSpecies.pokemon)
-                .outerjoin(
-                    v.PokemonSpecies.pokemon_species_names.and_(
-                        v.PokemonSpeciesNames.local_language_id == 9
-                    )
-                )
-                .outerjoin(v.Pokemon.pokemon_forms.and_(v.PokemonForms.is_default))
-                .outerjoin(
-                    v.PokemonForms.pokemon_form_names.and_(
-                        v.PokemonFormNames.local_language_id == 9
-                    )
-                )
-                .filter(v.PokemonSpecies.identifier == pokemon_id)
-                .all()
-            )
-        }
-        all_forms_ids = all_forms.keys()
-
-        rs = (
-            session.query(
-                v.PokemonMoveMethods.id.label("method_id"),
-                v.PokemonMoveMethodProse.name.label("method_name"),
-                v.Moves.id.label("move_id"),
-                v.MoveNames.name.label("move_name"),
-                v.PokemonMoves.level,
-                v.ItemNames.name.label("machine"),
-                v.Pokemon.id.label("pokemon_id"),
-            )
-            .select_from(v.PokemonSpecies)  # type: ignore  # sqlalchemy
-            .join(v.PokemonSpecies.pokemon)
-            .join(
-                v.Pokemon.pokemon_moves.and_(
-                    v.PokemonMoves.version_group_id == version_group_id
-                )
-            )
-            .join(v.PokemonMoves.move)
-            .outerjoin(v.Moves.move_names.and_(v.MoveNames.local_language_id == 9))
-            .join(v.PokemonMoves.pokemon_move_method)
-            .outerjoin(
-                v.PokemonMoveMethods.pokemon_move_method_prose.and_(
-                    v.PokemonMoveMethodProse.local_language_id == 9
-                )
-            )
-            .outerjoin(
-                v.Moves.machines.and_(
-                    v.Machines.version_group_id == v.PokemonMoves.version_group_id
-                )
-            )
-            .outerjoin(v.Machines.item)
-            .outerjoin(v.Items.item_names.and_(v.ItemNames.local_language_id == 9))
-            .filter(v.PokemonSpecies.identifier == pokemon_id)
-            .order_by(
-                v.PokemonMoveMethods.id,
-                v.PokemonMoves.level,
-                v.PokemonMoves.order,
-                v.Machines.machine_number,
-                v.Pokemon.id,
-                v.MoveNames.name,
-            )
-            .all()
+        version_group = (
+            session.query(v.VersionGroups)
+            .filter_by(identifier=version_id)
+            .one_or_none()
         )
 
-        for row in rs:
-            if row.method_id not in results:
-                results[row.method_id] = {
-                    "name": row.method_name,
-                    "moves": {},
-                    "form_column": False,
-                }
+        if version_group is None:
+            version = (
+                session.query(v.Versions)
+                .filter(v.Versions.identifier == version_id)
+                .one_or_none()
+            )
+            if version is None:
+                await msg.reply("Game version not found.")
+                return
+            version_group = version.version_group
 
-            if row.move_id not in results[row.method_id]["moves"]:
-                results[row.method_id]["moves"][row.move_id] = {
-                    "name": row.move_name,
-                    "level": int(row.level),
-                    "machine": row.machine,
-                    "forms": set(),
-                }
-            results[row.method_id]["moves"][row.move_id]["forms"].add(row.pokemon_id)
+        pokemon_species = (
+            session.query(v.PokemonSpecies)
+            .options(  # type: ignore  # sqlalchemy
+                selectinload(v.PokemonSpecies.pokemon)
+                .selectinload(
+                    v.Pokemon.pokemon_moves.and_(
+                        v.PokemonMoves.version_group_id == version_group.id
+                    )
+                )
+                .options(
+                    selectinload(v.PokemonMoves.move).options(
+                        selectinload(v.Moves.move_names),
+                        selectinload(
+                            v.Moves.machines.and_(
+                                v.Machines.version_group_id == version_group.id
+                            )
+                        )
+                        .selectinload(v.Machines.item)
+                        .selectinload(v.Items.item_names),
+                    ),
+                    selectinload(v.PokemonMoves.pokemon_move_method).selectinload(
+                        v.PokemonMoveMethods.pokemon_move_method_prose
+                    ),
+                )
+            )
+            .filter_by(identifier=pokemon_id)
+            .one_or_none()
+        )
+        if pokemon_species is None:
+            await msg.reply("Pokémon not found.")
+            return
+
+        results: dict[int, ResultsDict] = {}
+
+        all_forms = pokemon_species.all_forms(language_id)
+        all_forms_ids = all_forms.keys()
+
+        for pokemon in pokemon_species.pokemon:
+            for pokemon_move in pokemon.pokemon_moves:
+
+                method = pokemon_move.pokemon_move_method
+                if method.id not in results:
+                    results[method.id] = {
+                        "name": method.get_translation(language_id),
+                        "moves": {},
+                        "form_column": False,
+                    }
+
+                move = pokemon_move.move
+                if move.id not in results[method.id]["moves"]:
+                    if move.machines:
+                        machine_id = move.machines[0].machine_number
+                        machine = move.machines[0].item.get_translation(language_id)
+                    else:
+                        machine_id = None
+                        machine = None
+                    results[method.id]["moves"][move.id] = {
+                        "name": move.get_translation(language_id),
+                        "level": int(pokemon_move.level),
+                        "order": int(pokemon_move.order or 0),
+                        "machine_id": machine_id,
+                        "machine": machine,
+                        "forms": set(),
+                    }
+                results[method.id]["moves"][move.id]["forms"].add(pokemon.id)
 
         for method_id in results:
             for move_id in results[method_id]["moves"]:
@@ -147,6 +129,20 @@ async def learnset(msg: Message) -> None:
                     results[method_id]["moves"][move_id]["forms"] = set()
                 else:
                     results[method_id]["form_column"] = True
+
+        results = dict(sorted(results.items()))
+        for method_id in results.keys():
+            results[method_id]["moves"] = dict(
+                sorted(
+                    results[method_id]["moves"].items(),
+                    key=lambda x: (
+                        x[1]["level"],
+                        x[1]["order"],
+                        x[1]["machine_id"],
+                        x[1]["name"],
+                    ),
+                )
+            )
 
         html = utils.render_template(
             "commands/learnsets.html", results=results, all_forms=all_forms
