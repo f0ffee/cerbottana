@@ -1,10 +1,63 @@
 # pylint: disable=too-few-public-methods
 
+from __future__ import annotations
+
+from typing import TypedDict
+
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
+
+
+class TranslationData(TypedDict, total=False):
+    table: str
+    column: str
+    language_column: str
+    fallback: str
+
+
+class TranslatableMixin:
+    _translation_data: TranslationData
+
+    def get_translation(
+        self,
+        language_id: int,
+        translation_table: str | None = None,
+        *,
+        translation_column: str | None = None,
+        language_column: str | None = None,
+        fallback: str | None = None,
+    ) -> str:
+        if translation_table is None:
+            translation_table = self._translation_data["table"]
+        if translation_column is None:
+            translation_column = self._translation_data.get("column", "name")
+        if language_column is None:
+            language_column = self._translation_data.get(
+                "language_column", "local_language_id"
+            )
+        if fallback is None:
+            fallback = self._translation_data.get("fallback", "identifier")
+
+        languages = [language_id]
+        if language_id != 9:
+            languages.append(9)  # Fallback to english.
+        for lang in languages:
+            if name := next(
+                (
+                    getattr(i, translation_column)
+                    for i in getattr(self, translation_table)
+                    if getattr(i, language_column) == lang
+                ),
+                None,
+            ):
+                return name  # type: ignore[no-any-return]
+
+        # If both the localized and the english name are unavailable then simply return
+        # the identifier.
+        return getattr(self, fallback)  # type: ignore[no-any-return]
 
 
 class LatestCommit(Base):
@@ -179,7 +232,7 @@ class ItemNames(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class Items(Base):
+class Items(TranslatableMixin, Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -190,6 +243,8 @@ class Items(Base):
     fling_effect_id = Column(Integer, nullable=False)
 
     item_names = relationship("ItemNames", uselist=True, viewonly=True)
+
+    _translation_data = {"table": "item_names"}
 
 
 class Languages(Base):
@@ -291,7 +346,7 @@ class MoveNames(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class Moves(Base):
+class Moves(TranslatableMixin, Base):
     __tablename__ = "moves"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -314,6 +369,8 @@ class Moves(Base):
 
     move_names = relationship("MoveNames", uselist=True, viewonly=True)
     machines = relationship("Machines", uselist=True, viewonly=True)
+
+    _translation_data = {"table": "move_names"}
 
 
 class Pokemon(Base):
@@ -351,7 +408,7 @@ class PokemonFormNames(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class PokemonForms(Base):
+class PokemonForms(TranslatableMixin, Base):
     __tablename__ = "pokemon_forms"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -374,6 +431,11 @@ class PokemonForms(Base):
 
     pokemon_form_names = relationship("PokemonFormNames", uselist=True, viewonly=True)
 
+    _translation_data = {
+        "table": "pokemon_form_names",
+        "column": "pokemon_name",
+    }
+
 
 class PokemonMoveMethodProse(Base):
     __tablename__ = "pokemon_move_method_prose"
@@ -393,7 +455,7 @@ class PokemonMoveMethodProse(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class PokemonMoveMethods(Base):
+class PokemonMoveMethods(TranslatableMixin, Base):
     __tablename__ = "pokemon_move_methods"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -402,6 +464,8 @@ class PokemonMoveMethods(Base):
     pokemon_move_method_prose = relationship(
         "PokemonMoveMethodProse", uselist=True, viewonly=True
     )
+
+    _translation_data = {"table": "pokemon_move_method_prose"}
 
 
 class PokemonMoves(Base):
@@ -428,7 +492,7 @@ class PokemonMoves(Base):
     )
 
 
-class PokemonSpecies(Base):
+class PokemonSpecies(TranslatableMixin, Base):
     __tablename__ = "pokemon_species"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -464,6 +528,8 @@ class PokemonSpecies(Base):
         "PokemonSpeciesNames", uselist=True, viewonly=True
     )
     pokemon = relationship("Pokemon", uselist=True, viewonly=True)
+
+    _translation_data = {"table": "pokemon_species_names"}
 
 
 class PokemonSpeciesFlavorText(Base):
