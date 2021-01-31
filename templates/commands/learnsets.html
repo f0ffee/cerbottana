@@ -1,7 +1,7 @@
-{% for method_id in methods %}
+{% for method_id, method in results.items() %}
   <details>
     <summary>
-      <b><big>{{ results[method_id]["name"] }}</big></b>
+      <b><big>{{ method["name"] }}</big></b>
     </summary>
     <table style="margin: 5px 0">
       <tbody>
@@ -12,14 +12,25 @@
           {% elif method_id == 4 %}
             <th>Machine</th>
           {% endif %}
+          {% if method["form_column"] %}
+            <th>Form</th>
+          {% endif %}
         </tr>
-        {% for move in results[method_id]["moves"] %}
+        {% for move in method["moves"].values() %}
           <tr>
             <td>{{ move["name"] }}</td>
             {% if method_id == 1 %}
               <td style="text-align: right">{{ move["level"] }}</td>
             {% elif method_id == 4 %}
               <td>{{ move["machine"] }}</td>
+            {% endif %}
+            {% if method["form_column"] %}
+              <td>
+                {% for form_id in move["forms"]|sort %}
+                  {{ all_forms[form_id] }}
+                  {%- if not loop.last %}, {% endif %}
+                {% endfor %}
+              </td>
             {% endif %}
           </tr>
         {% endfor %}
