@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
-
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -11,21 +9,12 @@ from sqlalchemy.orm import relationship
 Base = declarative_base()
 
 
-class TranslationData(TypedDict, total=False):
-    translation_table: str
-    translation_column: str
-    language_column: str
-    fallback_column: str
-
-
 class TranslatableMixin:
-    _translation_data: TranslationData
-
     def get_translation(
         self,
+        translation_table: str,
         *,
         language_id: int | None = None,
-        translation_table: str | None = None,
         translation_column: str | None = None,
         language_column: str | None = None,
         fallback_column: str | None = None,
@@ -37,20 +26,12 @@ class TranslatableMixin:
                     "language_id", 9
                 )
             )
-        if translation_table is None:
-            translation_table = self._translation_data["translation_table"]
         if translation_column is None:
-            translation_column = self._translation_data.get(
-                "translation_column", "name"
-            )
+            translation_column = "name"
         if language_column is None:
-            language_column = self._translation_data.get(
-                "language_column", "local_language_id"
-            )
+            language_column = "local_language_id"
         if fallback_column is None:
-            fallback_column = self._translation_data.get(
-                "fallback_column", "identifier"
-            )
+            fallback_column = "identifier"
 
         languages = [language_id]
         if language_id != 9:
@@ -258,7 +239,9 @@ class Items(TranslatableMixin, Base):
 
     item_names = relationship("ItemNames", uselist=True, viewonly=True)
 
-    _translation_data = {"translation_table": "item_names"}
+    @property
+    def name(self) -> str:
+        return self.get_translation("item_names")
 
 
 class Languages(Base):
@@ -384,7 +367,9 @@ class Moves(TranslatableMixin, Base):
     move_names = relationship("MoveNames", uselist=True, viewonly=True)
     machines = relationship("Machines", uselist=True, viewonly=True)
 
-    _translation_data = {"translation_table": "move_names"}
+    @property
+    def name(self) -> str:
+        return self.get_translation("move_names")
 
 
 class Pokemon(Base):
@@ -420,11 +405,15 @@ class Pokemon(Base):
 
     @property
     def name(self) -> str:
-        pokemon_name = self.species.get_translation()
+        pokemon_name = self.species.name
         for form in self.pokemon_forms:
             if not form.is_default:
                 continue
-            pokemon_name = form.get_translation(fallback=pokemon_name)
+            pokemon_name = form.get_translation(
+                "pokemon_form_names",
+                translation_column="form_name",
+                fallback=pokemon_name,
+            )
         return pokemon_name
 
 
@@ -467,10 +456,11 @@ class PokemonForms(TranslatableMixin, Base):
 
     pokemon_form_names = relationship("PokemonFormNames", uselist=True, viewonly=True)
 
-    _translation_data = {
-        "translation_table": "pokemon_form_names",
-        "translation_column": "form_name",
-    }
+    @property
+    def name(self) -> str:
+        return self.get_translation(
+            "pokemon_form_names", translation_column="form_name"
+        )
 
 
 class PokemonMoveMethodProse(Base):
@@ -501,7 +491,9 @@ class PokemonMoveMethods(TranslatableMixin, Base):
         "PokemonMoveMethodProse", uselist=True, viewonly=True
     )
 
-    _translation_data = {"translation_table": "pokemon_move_method_prose"}
+    @property
+    def prose(self) -> str:
+        return self.get_translation("pokemon_move_method_prose")
 
 
 class PokemonMoves(Base):
@@ -565,7 +557,9 @@ class PokemonSpecies(TranslatableMixin, Base):
     )
     pokemon = relationship("Pokemon", uselist=True, viewonly=True)
 
-    _translation_data = {"translation_table": "pokemon_species_names"}
+    @property
+    def name(self) -> str:
+        return self.get_translation("pokemon_species_names")
 
 
 class PokemonSpeciesFlavorText(Base):

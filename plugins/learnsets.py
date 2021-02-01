@@ -101,7 +101,7 @@ async def learnset(msg: Message) -> None:
                 method = pokemon_move.pokemon_move_method
                 if method.id not in results:
                     results[method.id] = {
-                        "name": method.get_translation(),
+                        "name": method.prose,
                         "moves": {},
                         "form_column": False,
                     }
@@ -110,12 +110,12 @@ async def learnset(msg: Message) -> None:
                 if move.id not in results[method.id]["moves"]:
                     if move.machines:
                         machine_id = move.machines[0].machine_number
-                        machine = move.machines[0].item.get_translation()
+                        machine = move.machines[0].item.name
                     else:
                         machine_id = 0
                         machine = ""
                     results[method.id]["moves"][move.id] = {
-                        "name": move.get_translation(),
+                        "name": move.name,
                         "level": int(pokemon_move.level),
                         "order": int(pokemon_move.order or 0),
                         "machine_id": machine_id,
