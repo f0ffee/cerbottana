@@ -149,7 +149,7 @@ async def learnset(msg: Message) -> None:
         )
 
         if not html:
-            await msg.reply("Nessun dato")
+            await msg.reply("No data available.")
             return
 
         await msg.reply_htmlbox('<div class="ladder">' + html + "</div>")
