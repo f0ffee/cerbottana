@@ -29,6 +29,7 @@ class TranslatableMixin:
         translation_column: str | None = None,
         language_column: str | None = None,
         fallback_column: str | None = None,
+        fallback: str | None = None,
     ) -> str:
         if language_id is None:
             language_id = (
@@ -64,6 +65,9 @@ class TranslatableMixin:
                 None,
             ):
                 return name  # type: ignore[no-any-return]
+
+        if fallback is not None:
+            return fallback
 
         # If both the localized and the english name are unavailable then simply return
         # the identifier.
