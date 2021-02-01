@@ -30,6 +30,12 @@ class TranslatableMixin:
         language_column: str | None = None,
         fallback_column: str | None = None,
     ) -> str:
+        if language_id is None:
+            language_id = (
+                self._sa_instance_state.session.info.get(  # type: ignore[attr-defined]
+                    "language_id", 9
+                )
+            )
         if translation_table is None:
             translation_table = self._translation_data["translation_table"]
         if translation_column is None:
