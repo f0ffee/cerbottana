@@ -12,10 +12,10 @@ Base = declarative_base()
 
 
 class TranslationData(TypedDict, total=False):
-    table: str
-    column: str
+    translation_table: str
+    translation_column: str
     language_column: str
-    fallback: str
+    fallback_column: str
 
 
 class TranslatableMixin:
@@ -23,23 +23,27 @@ class TranslatableMixin:
 
     def get_translation(
         self,
-        language_id: int,
-        translation_table: str | None = None,
         *,
+        language_id: int | None = None,
+        translation_table: str | None = None,
         translation_column: str | None = None,
         language_column: str | None = None,
-        fallback: str | None = None,
+        fallback_column: str | None = None,
     ) -> str:
         if translation_table is None:
-            translation_table = self._translation_data["table"]
+            translation_table = self._translation_data["translation_table"]
         if translation_column is None:
-            translation_column = self._translation_data.get("column", "name")
+            translation_column = self._translation_data.get(
+                "translation_column", "name"
+            )
         if language_column is None:
             language_column = self._translation_data.get(
                 "language_column", "local_language_id"
             )
-        if fallback is None:
-            fallback = self._translation_data.get("fallback", "identifier")
+        if fallback_column is None:
+            fallback_column = self._translation_data.get(
+                "fallback_column", "identifier"
+            )
 
         languages = [language_id]
         if language_id != 9:
@@ -57,7 +61,7 @@ class TranslatableMixin:
 
         # If both the localized and the english name are unavailable then simply return
         # the identifier.
-        return getattr(self, fallback)  # type: ignore[no-any-return]
+        return getattr(self, fallback_column)  # type: ignore[no-any-return]
 
 
 class LatestCommit(Base):
@@ -244,7 +248,7 @@ class Items(TranslatableMixin, Base):
 
     item_names = relationship("ItemNames", uselist=True, viewonly=True)
 
-    _translation_data = {"table": "item_names"}
+    _translation_data = {"translation_table": "item_names"}
 
 
 class Languages(Base):
@@ -370,7 +374,7 @@ class Moves(TranslatableMixin, Base):
     move_names = relationship("MoveNames", uselist=True, viewonly=True)
     machines = relationship("Machines", uselist=True, viewonly=True)
 
-    _translation_data = {"table": "move_names"}
+    _translation_data = {"translation_table": "move_names"}
 
 
 class Pokemon(Base):
@@ -432,8 +436,8 @@ class PokemonForms(TranslatableMixin, Base):
     pokemon_form_names = relationship("PokemonFormNames", uselist=True, viewonly=True)
 
     _translation_data = {
-        "table": "pokemon_form_names",
-        "column": "pokemon_name",
+        "translation_table": "pokemon_form_names",
+        "translation_column": "form_name",
     }
 
 
@@ -465,7 +469,7 @@ class PokemonMoveMethods(TranslatableMixin, Base):
         "PokemonMoveMethodProse", uselist=True, viewonly=True
     )
 
-    _translation_data = {"table": "pokemon_move_method_prose"}
+    _translation_data = {"translation_table": "pokemon_move_method_prose"}
 
 
 class PokemonMoves(Base):
@@ -529,7 +533,7 @@ class PokemonSpecies(TranslatableMixin, Base):
     )
     pokemon = relationship("Pokemon", uselist=True, viewonly=True)
 
-    _translation_data = {"table": "pokemon_species_names"}
+    _translation_data = {"translation_table": "pokemon_species_names"}
 
     def all_forms(self, language_id: int) -> dict[int, str]:
         forms = {}
