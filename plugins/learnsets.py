@@ -30,7 +30,6 @@ async def learnset(msg: Message) -> None:
     with db.get_session(language_id) as session:
 
         class MovesDict(TypedDict):
-            name: str
             level: int
             order: int
             machine_id: int
@@ -38,7 +37,6 @@ async def learnset(msg: Message) -> None:
             forms: set[v.Pokemon]
 
         class ResultsDict(TypedDict):
-            name: str
             moves: dict[int, MovesDict]
             form_column: bool
 
@@ -93,45 +91,41 @@ async def learnset(msg: Message) -> None:
 
         results: dict[int, ResultsDict] = {}
 
-        all_forms = {i.id for i in pokemon_species.pokemon}
+        all_forms = set(pokemon_species.pokemon)
 
         for pokemon in pokemon_species.pokemon:
             for pokemon_move in pokemon.pokemon_moves:
 
                 method = pokemon_move.pokemon_move_method
-                if method.id not in results:
-                    results[method.id] = {
-                        "name": method.prose,
+                if method not in results:
+                    results[method] = {
                         "moves": {},
                         "form_column": False,
                     }
 
                 move = pokemon_move.move
-                if move.id not in results[method.id]["moves"]:
+                if move not in results[method]["moves"]:
                     if move.machines:
                         machine_id = move.machines[0].machine_number
                         machine = move.machines[0].item.name
                     else:
                         machine_id = 0
                         machine = ""
-                    results[method.id]["moves"][move.id] = {
-                        "name": move.name,
+                    results[method]["moves"][move] = {
                         "level": int(pokemon_move.level),
                         "order": int(pokemon_move.order or 0),
                         "machine_id": machine_id,
                         "machine": machine,
                         "forms": set(),
                     }
-                results[method.id]["moves"][move.id]["forms"].add(pokemon)
+                results[method]["moves"][move]["forms"].add(pokemon)
 
-        for method_id in results:
-            for move_id in results[method_id]["moves"]:
-                if {
-                    i.id for i in results[method_id]["moves"][move_id]["forms"]
-                } == all_forms:
-                    results[method_id]["moves"][move_id]["forms"] = set()
+        for method in results:
+            for move in results[method]["moves"]:
+                if results[method]["moves"][move]["forms"] == all_forms:
+                    results[method]["moves"][move]["forms"] = set()
                 else:
-                    results[method_id]["form_column"] = True
+                    results[method]["form_column"] = True
 
         html = utils.render_template("commands/learnsets.html", results=results)
 
