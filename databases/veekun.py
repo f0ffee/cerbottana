@@ -414,6 +414,15 @@ class Pokemon(Base):
     def __hash__(self) -> int:
         return hash(self.id)
 
+    @property
+    def name(self) -> str:
+        pokemon_name = self.species.get_translation()
+        for form in self.pokemon_forms:
+            if not form.is_default:
+                continue
+            pokemon_name = form.get_translation(fallback=pokemon_name)
+        return pokemon_name
+
 
 class PokemonFormNames(Base):
     __tablename__ = "pokemon_form_names"
@@ -553,17 +562,6 @@ class PokemonSpecies(TranslatableMixin, Base):
     pokemon = relationship("Pokemon", uselist=True, viewonly=True)
 
     _translation_data = {"translation_table": "pokemon_species_names"}
-
-    def all_forms(self, language_id: int) -> dict[int, str]:
-        forms = {}
-        for pokemon in self.pokemon:
-            for form in pokemon.pokemon_forms:
-                if not form.is_default:
-                    continue
-                forms[pokemon.id] = form.get_translation(
-                    language_id
-                ) or self.get_translation(language_id)
-        return forms
 
 
 class PokemonSpeciesFlavorText(Base):

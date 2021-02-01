@@ -26,8 +26,8 @@
             {% endif %}
             {% if method["form_column"] %}
               <td>
-                {% for form_id in move["forms"]|sort %}
-                  {{ all_forms[form_id] }}
+                {% for form in move["forms"]|sort %}
+                  {{ form.name }}
                   {%- if not loop.last %}, {% endif %}
                 {% endfor %}
               </td>

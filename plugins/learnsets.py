@@ -21,19 +21,21 @@ async def learnset(msg: Message) -> None:
     pokemon_id = utils.to_user_id(utils.remove_diacritics(msg.args[0].lower()))
     version = utils.to_user_id(utils.remove_diacritics(msg.args[1].lower()))
 
-    language_id = 9  # TEMP
+    language_id = msg.language_id
+    if len(msg.args) >= 3:
+        language_id = utils.get_language_id(msg.args[2], fallback=language_id)
 
     db = Database.open("veekun")
 
-    with db.get_session() as session:
+    with db.get_session(language_id) as session:
 
         class MovesDict(TypedDict):
             name: str
             level: int
             order: int
-            machine_id: int | None
+            machine_id: int
             machine: str | None
-            forms: set[int]
+            forms: set[v.Pokemon]
 
         class ResultsDict(TypedDict):
             name: str
@@ -91,8 +93,7 @@ async def learnset(msg: Message) -> None:
 
         results: dict[int, ResultsDict] = {}
 
-        all_forms = pokemon_species.all_forms(language_id)
-        all_forms_ids = all_forms.keys()
+        all_forms = {i.id for i in pokemon_species.pokemon}
 
         for pokemon in pokemon_species.pokemon:
             for pokemon_move in pokemon.pokemon_moves:
@@ -100,7 +101,7 @@ async def learnset(msg: Message) -> None:
                 method = pokemon_move.pokemon_move_method
                 if method.id not in results:
                     results[method.id] = {
-                        "name": method.get_translation(language_id),
+                        "name": method.get_translation(),
                         "moves": {},
                         "form_column": False,
                     }
@@ -109,23 +110,25 @@ async def learnset(msg: Message) -> None:
                 if move.id not in results[method.id]["moves"]:
                     if move.machines:
                         machine_id = move.machines[0].machine_number
-                        machine = move.machines[0].item.get_translation(language_id)
+                        machine = move.machines[0].item.get_translation()
                     else:
-                        machine_id = None
+                        machine_id = 0
                         machine = None
                     results[method.id]["moves"][move.id] = {
-                        "name": move.get_translation(language_id),
+                        "name": move.get_translation(),
                         "level": int(pokemon_move.level),
                         "order": int(pokemon_move.order or 0),
                         "machine_id": machine_id,
                         "machine": machine,
                         "forms": set(),
                     }
-                results[method.id]["moves"][move.id]["forms"].add(pokemon.id)
+                results[method.id]["moves"][move.id]["forms"].add(pokemon)
 
         for method_id in results:
             for move_id in results[method_id]["moves"]:
-                if results[method_id]["moves"][move_id]["forms"] == all_forms_ids:
+                if {
+                    i.id for i in results[method_id]["moves"][move_id]["forms"]
+                } == all_forms:
                     results[method_id]["moves"][move_id]["forms"] = set()
                 else:
                     results[method_id]["form_column"] = True
@@ -144,9 +147,7 @@ async def learnset(msg: Message) -> None:
                 )
             )
 
-        html = utils.render_template(
-            "commands/learnsets.html", results=results, all_forms=all_forms
-        )
+        html = utils.render_template("commands/learnsets.html", results=results)
 
         if not html:
             await msg.reply("No data available.")
