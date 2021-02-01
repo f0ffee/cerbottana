@@ -401,6 +401,19 @@ class Pokemon(Base):
     pokemon_forms = relationship("PokemonForms", uselist=True, viewonly=True)
     pokemon_moves = relationship("PokemonMoves", uselist=True, viewonly=True)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Pokemon):
+            raise NotImplementedError
+        return self.id == other.id
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Pokemon):
+            raise NotImplementedError
+        return self.id < other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
 
 class PokemonFormNames(Base):
     __tablename__ = "pokemon_form_names"
