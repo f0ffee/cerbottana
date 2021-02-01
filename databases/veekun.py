@@ -123,7 +123,7 @@ class EncounterConditionValueProse(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class EncounterConditionValues(HashableMixin, Base):
+class EncounterConditionValues(HashableMixin, TranslatableMixin, Base):
     __tablename__ = "encounter_condition_values"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -140,6 +140,10 @@ class EncounterConditionValues(HashableMixin, Base):
     encounter_condition_value_prose = relationship(
         "EncounterConditionValueProse", uselist=True, viewonly=True
     )
+
+    @property
+    def prose(self) -> str:
+        return self.get_translation("encounter_condition_value_prose")
 
 
 class EncounterConditions(HashableMixin, Base):
@@ -168,7 +172,7 @@ class EncounterMethodProse(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class EncounterMethods(HashableMixin, Base):
+class EncounterMethods(HashableMixin, TranslatableMixin, Base):
     __tablename__ = "encounter_methods"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -178,6 +182,10 @@ class EncounterMethods(HashableMixin, Base):
     encounter_method_prose = relationship(
         "EncounterMethodProse", uselist=True, viewonly=True
     )
+
+    @property
+    def prose(self) -> str:
+        return self.get_translation("encounter_method_prose")
 
 
 class EncounterSlots(HashableMixin, Base):
@@ -299,7 +307,7 @@ class LocationAreaProse(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class LocationAreas(HashableMixin, Base):
+class LocationAreas(HashableMixin, TranslatableMixin, Base):
     __tablename__ = "location_areas"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -311,6 +319,10 @@ class LocationAreas(HashableMixin, Base):
     location_area_prose = relationship("LocationAreaProse", uselist=True, viewonly=True)
 
     encounters = relationship("Encounters", uselist=True, viewonly=True)
+
+    @property
+    def name(self) -> str:
+        return self.get_translation("location_area_prose")
 
 
 class LocationNames(Base):
@@ -329,7 +341,7 @@ class LocationNames(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class Locations(HashableMixin, Base):
+class Locations(HashableMixin, TranslatableMixin, Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -342,6 +354,16 @@ class Locations(HashableMixin, Base):
 
     location_names = relationship("LocationNames", uselist=True, viewonly=True)
     location_areas = relationship("LocationAreas", uselist=True, viewonly=True)
+
+    @property
+    def name(self) -> str:
+        return self.get_translation("location_names")
+
+    @property
+    def subtitle(self) -> str:
+        return self.get_translation(
+            "location_names", translation_column="subtitle", fallback=""
+        )
 
 
 class Machines(HashableMixin, Base):
@@ -654,7 +676,7 @@ class VersionNames(Base):
     local_language = relationship("Languages", uselist=False, viewonly=True)
 
 
-class Versions(HashableMixin, Base):
+class Versions(HashableMixin, TranslatableMixin, Base):
     __tablename__ = "versions"
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -664,3 +686,7 @@ class Versions(HashableMixin, Base):
     version_group = relationship("VersionGroups", uselist=False, viewonly=True)
 
     version_names = relationship("VersionNames", uselist=True, viewonly=True)
+
+    @property
+    def name(self) -> str:
+        return self.get_translation("version_names")
