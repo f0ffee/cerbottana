@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import total_ordering
+
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -9,21 +11,31 @@ from sqlalchemy.orm import relationship
 Base = declarative_base()
 
 
+@total_ordering
 class HashableMixin:
     id: Column[int]
 
+    @property
+    def _id(self) -> int:
+        # Tables without an `id` column should override this property.
+        return self.id
+
     def __eq__(self, other: object) -> bool:
+        if other is None:
+            return False
         if not isinstance(other, type(self)):
             raise NotImplementedError
-        return self.id == other.id
+        return self._id == other._id
 
     def __lt__(self, other: object) -> bool:
+        if other is None:
+            return True
         if not isinstance(other, type(self)):
             raise NotImplementedError
-        return self.id < other.id
+        return self._id < other._id
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash(self._id)
 
 
 class TranslatableMixin:
@@ -332,7 +344,7 @@ class Locations(HashableMixin, Base):
     location_areas = relationship("LocationAreas", uselist=True, viewonly=True)
 
 
-class Machines(Base):
+class Machines(HashableMixin, Base):
     __tablename__ = "machines"
 
     machine_number = Column(Integer, primary_key=True, nullable=False)
@@ -345,6 +357,10 @@ class Machines(Base):
     version_group = relationship("VersionGroups", uselist=False, viewonly=True)
     item = relationship("Items", uselist=False, viewonly=True)
     move = relationship("Moves", uselist=False, viewonly=True)
+
+    @property
+    def _id(self) -> int:
+        return self.machine_number
 
 
 class MoveNames(Base):
