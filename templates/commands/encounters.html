@@ -1,34 +1,34 @@
-{% for version_id, version in results.items() %}
+{% for version, version_data in results.items()|sort %}
   <details>
     <summary>
-      <b><big>{{ version["name"] }}</big></b>
+      <b><big>{{ version.name }}</big></b>
     </summary>
     <table>
       <tbody>
-        {% for area in version["areas"].values() %}
+        {% for area, area_data in version_data["areas"].items()|sort(attribute="0.name") %}
           <tr>
-            <th>{{ area["name"] }}</th>
+            <th>{{ area.name }}</th>
             <th>Method</th>
             <th>Level</th>
             <th colspan="2">Rarity</th>
           </tr>
-          {% for slot in area["slots"].values() %}
+          {% for slot, slot_data in area_data["slots"].items()|sort(reverse=True, attribute="rarity")|sort(attribute="0.pokemon.species.order,0.pokemon.order,0.method,0.min_level,0.max_level") %}
             <tr>
-              <td>{{ slot["pokemon"] }}</td>
-              <td>{{ slot["method"] }}</td>
+              <td>{{ slot.pokemon.name }}</td>
+              <td>{{ slot.method.prose }}</td>
               <td>
-                L{{ slot["min_level"] }}
-                {%- if slot["min_level"] < slot["max_level"] -%}
-                  -{{ slot["max_level"] }}
+                L{{ slot.min_level }}
+                {%- if slot.min_level < slot.max_level -%}
+                  -{{ slot.max_level }}
                 {% endif %}
               </td>
-              <td{% if not slot["conditions"] %} colspan="2"{% endif %}>
-                {{ slot["rarity"] }}%
+              <td{% if not slot.conditions %} colspan="2"{% endif %}>
+                {{ slot_data["rarity"] }}%
               </td>
-              {% if slot["conditions"] %}
+              {% if slot.conditions %}
                 <td>
-                  {% for condition in slot["conditions"] %}
-                    {{ all_conditions[condition] }}
+                  {% for condition in slot.conditions|sort %}
+                    {{ condition.prose }}
                     {%- if not loop.last %}, {% endif %}
                   {% endfor %}
                 </td>

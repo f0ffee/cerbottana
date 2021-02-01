@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple, TypedDict
 
-from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 import databases.veekun as v
@@ -132,166 +131,103 @@ async def locations(msg: Message) -> None:
 
 @command_wrapper(aliases=("encounter",))
 async def encounters(msg: Message) -> None:
-    location_id = utils.to_user_id(utils.remove_diacritics(msg.arg.lower()))
+    if len(msg.args) < 1:
+        return
+
+    location_id = utils.to_user_id(utils.remove_diacritics(msg.args[0].lower()))
+
+    language_id = msg.language_id
+    if len(msg.args) >= 2:
+        language_id = utils.get_language_id(msg.args[1], fallback=language_id)
 
     db = Database.open("veekun")
 
-    with db.get_session() as session:
+    with db.get_session(language_id) as session:
 
-        class SlotsDict(TypedDict):
-            pokemon: str
-            method: str
+        class SlotsKeyTuple(NamedTuple):
+            pokemon: v.Pokemon
+            method: v.EncounterMethods
             min_level: int
             max_level: int
-            conditions: frozenset[int]
+            conditions: frozenset[v.EncounterConditionValues]
+
+        class SlotsDict(TypedDict):
             rarity: int
 
         class AreasDict(TypedDict):
-            name: str
-            slots: dict[tuple[int, int, int, int, frozenset[int]], SlotsDict]
+            slots: dict[SlotsKeyTuple, SlotsDict]
 
         class ResultsDict(TypedDict):
-            name: str
-            areas: dict[int, AreasDict]
+            areas: dict[v.LocationAreas, AreasDict]
 
-        results: dict[int, ResultsDict] = {}
-
-        all_conditions = {
-            i[0]: i[1]
-            for i in (
-                session.query(
-                    v.EncounterConditionValueProse.encounter_condition_value_id,
-                    v.EncounterConditionValueProse.name,
-                )
-                .select_from(
-                    v.EncounterConditionValueProse
-                )  # type: ignore  # sqlalchemy
-                .filter_by(local_language_id=9)
-            )
-        }
-
-        rs = (
-            session.query(
-                v.LocationAreas.id.label("area_id"),
-                v.LocationAreaProse.name.label("area_name"),
-                v.Versions.id.label("version_id"),
-                v.VersionNames.name.label("version_name"),
-                v.Pokemon.id.label("pokemon_id"),
-                v.PokemonSpeciesNames.name.label(
-                    "pokemon_species_name"
-                ),  # DA GUARDARE PERCHÈ SÌ
-                v.EncounterSlots.rarity,
-                v.EncounterMethods.id.label("method_id"),
-                v.EncounterMethodProse.name.label("method_name"),
-                v.Encounters.min_level,
-                v.Encounters.max_level,
-                func.group_concat(
-                    v.EncounterConditionValueMap.encounter_condition_value_id
-                ).label("conditions"),
-            )
-            .select_from(v.Locations)  # type: ignore  # sqlalchemy
-            .join(v.Locations.location_areas)
-            .outerjoin(
-                v.LocationAreas.location_area_prose.and_(
-                    v.LocationAreaProse.local_language_id == 9
+        location: v.Locations | None = (
+            session.query(v.Locations)
+            .options(  # type: ignore  # sqlalchemy
+                selectinload(v.Locations.location_areas).options(
+                    selectinload(v.LocationAreas.location_area_prose),
+                    selectinload(v.LocationAreas.encounters).options(
+                        selectinload(v.Encounters.version).selectinload(
+                            v.Versions.version_names
+                        ),
+                        selectinload(v.Encounters.pokemon)
+                        .selectinload(v.Pokemon.species)
+                        .selectinload(v.PokemonSpecies.pokemon_species_names),
+                        selectinload(v.Encounters.encounter_slot)
+                        .selectinload(v.EncounterSlots.encounter_method)
+                        .selectinload(v.EncounterMethods.encounter_method_prose),
+                        selectinload(v.Encounters.encounter_condition_value_map)
+                        .selectinload(
+                            v.EncounterConditionValueMap.encounter_condition_value
+                        )
+                        .selectinload(
+                            v.EncounterConditionValues.encounter_condition_value_prose
+                        ),
+                    ),
                 )
             )
-            .join(v.LocationAreas.encounters)
-            .join(v.Encounters.version)
-            .outerjoin(
-                v.Versions.version_names.and_(v.VersionNames.local_language_id == 9)
-            )
-            .join(v.Encounters.pokemon)
-            .join(v.Pokemon.species)
-            .outerjoin(
-                v.PokemonSpecies.pokemon_species_names.and_(
-                    v.PokemonSpeciesNames.local_language_id == 9
-                )
-            )
-            .join(v.Encounters.encounter_slot)
-            .join(v.EncounterSlots.encounter_method)
-            .outerjoin(
-                v.EncounterMethods.encounter_method_prose.and_(
-                    v.EncounterMethodProse.local_language_id == 9
-                )
-            )
-            .outerjoin(v.Encounters.encounter_condition_value_map)
-            .filter(v.Locations.identifier == location_id)
-            .group_by(v.Encounters.id)
-            .order_by(
-                v.Versions.id,
-                v.LocationAreaProse.name,
-                v.PokemonSpecies.order,
-                v.Pokemon.order,
-                v.EncounterMethods.id,
-                v.Encounters.min_level,
-                v.Encounters.max_level,
-                v.EncounterSlots.rarity.desc(),
-            )
-            .all()
+            .filter_by(identifier=location_id)
+            .one_or_none()
         )
+        if location is None:
+            await msg.reply("Location not found.")
+            return
 
-        for row in rs:
-            if row.version_id not in results:
-                results[row.version_id] = {"name": row.version_name, "areas": {}}
+        results: dict[v.Versions, ResultsDict] = {}
 
-            if row.area_id not in results[row.version_id]["areas"]:
-                results[row.version_id]["areas"][row.area_id] = {
-                    "name": row.area_name,
-                    "slots": {},
-                }
+        for area in location.location_areas:
+            for encounter in area.encounters:
 
-            conditions = (
-                frozenset(int(i) for i in row.conditions.split(","))
-                if row.conditions
-                else frozenset()
-            )
+                version = encounter.version
+                if version not in results:
+                    results[version] = {"areas": {}}
 
-            slots_key = (
-                row.pokemon_id,
-                row.method_id,
-                row.min_level,
-                row.max_level,
-                conditions,
-            )
+                if area not in results[version]["areas"]:
+                    results[version]["areas"][area] = {"slots": {}}
 
-            if slots_key not in results[row.version_id]["areas"][row.area_id]["slots"]:
-                results[row.version_id]["areas"][row.area_id]["slots"][slots_key] = {
-                    "pokemon": row.pokemon_species_name,
-                    "method": row.method_name,
-                    "min_level": 100,
-                    "max_level": 0,
-                    "conditions": conditions,
-                    "rarity": 0,
-                }
+                conditions = frozenset(
+                    i.encounter_condition_value
+                    for i in encounter.encounter_condition_value_map
+                )
 
-            results[row.version_id]["areas"][row.area_id]["slots"][slots_key][
-                "min_level"
-            ] = min(
-                results[row.version_id]["areas"][row.area_id]["slots"][slots_key][
-                    "min_level"
-                ],
-                row.min_level,
-            )
-            results[row.version_id]["areas"][row.area_id]["slots"][slots_key][
-                "max_level"
-            ] = max(
-                results[row.version_id]["areas"][row.area_id]["slots"][slots_key][
-                    "max_level"
-                ],
-                row.max_level,
-            )
+                slots_key = SlotsKeyTuple(
+                    encounter.pokemon,
+                    encounter.encounter_slot.encounter_method,
+                    encounter.min_level,
+                    encounter.max_level,
+                    conditions,
+                )
 
-            results[row.version_id]["areas"][row.area_id]["slots"][slots_key][
-                "rarity"
-            ] += row.rarity
+                if slots_key not in results[version]["areas"][area]["slots"]:
+                    results[version]["areas"][area]["slots"][slots_key] = {"rarity": 0}
 
-    html = utils.render_template(
-        "commands/encounters.html", results=results, all_conditions=all_conditions
-    )
+                results[version]["areas"][area]["slots"][slots_key][
+                    "rarity"
+                ] += encounter.encounter_slot.rarity
 
-    if not html:
-        await msg.reply("Nessun dato")
-        return
+        html = utils.render_template("commands/encounters.html", results=results)
 
-    await msg.reply_htmlbox('<div class="ladder">' + html + "</div>")
+        if not html:
+            await msg.reply("No data available.")
+            return
+
+        await msg.reply_htmlbox('<div class="ladder">' + html + "</div>")
