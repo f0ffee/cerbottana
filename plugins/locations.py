@@ -114,10 +114,6 @@ async def locations(msg: Message) -> None:
                     results[version]["slots"][slots_key] = {
                         "route_number": location.route_number or 0,
                         "location": full_location_name,
-                        # "method": row.method_name,
-                        # "min_level": 100,
-                        # "max_level": 0,
-                        # "conditions": conditions,
                         "rarity": 0,
                     }
 
