@@ -32,12 +32,11 @@ async def learnset(msg: Message) -> None:
         class MovesDict(TypedDict):
             level: int
             order: int
-            machine_id: int
-            machine: str
+            machine: v.Machines | None
             forms: set[v.Pokemon]
 
         class ResultsDict(TypedDict):
-            moves: dict[int, MovesDict]
+            moves: dict[v.Moves, MovesDict]
             form_column: bool
 
         version_group = (
@@ -89,7 +88,7 @@ async def learnset(msg: Message) -> None:
             await msg.reply("Pokémon not found.")
             return
 
-        results: dict[int, ResultsDict] = {}
+        results: dict[v.PokemonMoveMethods, ResultsDict] = {}
 
         all_forms = set(pokemon_species.pokemon)
 
@@ -105,17 +104,10 @@ async def learnset(msg: Message) -> None:
 
                 move = pokemon_move.move
                 if move not in results[method]["moves"]:
-                    if move.machines:
-                        machine_id = move.machines[0].machine_number
-                        machine = move.machines[0].item.name
-                    else:
-                        machine_id = 0
-                        machine = ""
                     results[method]["moves"][move] = {
                         "level": int(pokemon_move.level),
                         "order": int(pokemon_move.order or 0),
-                        "machine_id": machine_id,
-                        "machine": machine,
+                        "machine": move.machines[0] if move.machines else None,
                         "forms": set(),
                     }
                 results[method]["moves"][move]["forms"].add(pokemon)

@@ -16,13 +16,17 @@
             <th>Form</th>
           {% endif %}
         </tr>
-        {% for move, move_data in method_data["moves"].items()|sort(attribute="1.level,1.order,1.machine_id,0") %}
+        {% for move, move_data in method_data["moves"].items()|sort(attribute="1.level,1.order,1.machine,0") %}
           <tr>
             <td>{{ move.name }}</td>
             {% if method.id == 1 %}
               <td style="text-align: right">{{ move_data["level"] }}</td>
             {% elif method.id == 4 %}
-              <td>{{ move_data["machine"] }}</td>
+              <td>
+                {% if move_data["machine"] %}
+                  {{ move_data["machine"].item.name }}
+                {% endif %}
+              </td>
             {% endif %}
             {% if method_data["form_column"] %}
               <td>
