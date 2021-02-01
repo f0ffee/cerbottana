@@ -34,12 +34,12 @@ async def learnset(msg: Message) -> None:
             level: int
             order: int
             machine_id: int
-            machine: str | None
+            machine: str
             forms: set[v.Pokemon]
 
         class ResultsDict(TypedDict):
             name: str
-            moves: dict[str, MovesDict]
+            moves: dict[int, MovesDict]
             form_column: bool
 
         version_group = (
@@ -59,7 +59,7 @@ async def learnset(msg: Message) -> None:
                 return
             version_group = version.version_group
 
-        pokemon_species = (
+        pokemon_species: v.PokemonSpecies | None = (
             session.query(v.PokemonSpecies)
             .options(  # type: ignore  # sqlalchemy
                 selectinload(v.PokemonSpecies.pokemon)
@@ -113,7 +113,7 @@ async def learnset(msg: Message) -> None:
                         machine = move.machines[0].item.get_translation()
                     else:
                         machine_id = 0
-                        machine = None
+                        machine = ""
                     results[method.id]["moves"][move.id] = {
                         "name": move.get_translation(),
                         "level": int(pokemon_move.level),
