@@ -1,4 +1,4 @@
-{% for method_id, method in results.items() %}
+{% for method_id, method in results.items()|sort %}
   <details>
     <summary>
       <b><big>{{ method["name"] }}</big></b>
@@ -16,7 +16,7 @@
             <th>Form</th>
           {% endif %}
         </tr>
-        {% for move in method["moves"].values() %}
+        {% for move in method["moves"].values()|sort(attribute="level,order,machine_id,name") %}
           <tr>
             <td>{{ move["name"] }}</td>
             {% if method_id == 1 %}

@@ -133,20 +133,6 @@ async def learnset(msg: Message) -> None:
                 else:
                     results[method_id]["form_column"] = True
 
-        results = dict(sorted(results.items()))
-        for method_id in results.keys():
-            results[method_id]["moves"] = dict(
-                sorted(
-                    results[method_id]["moves"].items(),
-                    key=lambda x: (
-                        x[1]["level"],
-                        x[1]["order"],
-                        x[1]["machine_id"],
-                        x[1]["name"],
-                    ),
-                )
-            )
-
         html = utils.render_template("commands/learnsets.html", results=results)
 
         if not html:
