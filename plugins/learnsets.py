@@ -19,7 +19,7 @@ async def learnset(msg: Message) -> None:
         return
 
     pokemon_id = utils.to_user_id(utils.remove_diacritics(msg.args[0].lower()))
-    version = utils.to_user_id(utils.remove_diacritics(msg.args[1].lower()))
+    version_id = utils.to_user_id(utils.remove_diacritics(msg.args[1].lower()))
 
     language_id = msg.language_id
     if len(msg.args) >= 3:
